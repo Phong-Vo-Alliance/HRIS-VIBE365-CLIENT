@@ -1,0 +1,67 @@
+# .github/workflows/fe-ci.yml
+name: fe-ci
+
+on:
+  pull_request:
+    branches: [ develop, main ]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**/*.md"
+      - ".github/**"
+      - "docs/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fe-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_test:
+    if: github.event.pull_request.draft == false
+    name: Build, Lint, Typecheck & Test (FE)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+        env:
+          CI: "true"
+
+      # 1) Lint: fail nếu có WARNING
+      - name: ESLint
+        run: npm run lint -- --max-warnings=0
+
+      # 2) Typecheck tách riêng để fail nhanh
+      - name: Typecheck
+        run: npm run typecheck --if-present
+
+      # 3) Unit tests (Vitest) - chạy headless, có thể thêm coverage
+      - name: Unit tests
+        run: npm run test -- --run
+        # muốn xuất coverage:
+        # run: npm run test -- --run --coverage
+
+      # 4) Build (đảm bảo prod build OK)
+      - name: Build
+        run: npm run build
+
+      # 5) (Tuỳ chọn) Upload dist để attach vào PR
+      #- name: Upload dist artifact
+      #  if: success() && hashFiles('dist/**') != ''
+      #  uses: actions/upload-artifact@v4
+      #  with:
+      #    name: fe-dist
+      #    path: dist
+      #    retention-days: 3
