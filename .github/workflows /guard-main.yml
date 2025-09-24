@@ -1,0 +1,17 @@
+name: guard-main-branch
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce release/hotfix branches into main
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const head = context.payload.pull_request.head.ref || '';
+            if (!/^(release\/|hotfix\/)/.test(head)) {
+              core.setFailed(`PR vào main chỉ được phép từ 'release/*' hoặc 'hotfix/*'. Nhánh hiện tại: ${head}`);
+            }
