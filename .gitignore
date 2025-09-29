@@ -1,0 +1,43 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+
+# Build / caches
+dist/
+.eslintcache
+*.tsbuildinfo
+
+# Editor cruft
+.vs/
+.vscode/
+.idea/
+.history/
+.DS_Store
+Thumbs.db
+
+# Env files (keep examples only)
+.env
+.env.*
+!.env.example
+# If you keep a CI env in repo, un-ignore explicitly:
+# !.env.ci
+.env.local
+.env.*.local
+.envrc
+.npmrc
+
+# Test / coverage
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Platform deploy folders (optional—uncomment if you use them)
+# .vercel/
+# .netlify/
