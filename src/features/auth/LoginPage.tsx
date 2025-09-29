@@ -89,11 +89,11 @@ export default function LoginPage() {
 
   const demoLogin = () => {
     const token = "DEMO_TOKEN";
-    const user = { id: "u_demo", name: "Demo User", email: DEMO_EMAIL };
+    const user = { id: "u_demo", name: "Demo Client", email: DEMO_EMAIL };
     setAuth({ token, user });
     persistAuth(token, user, true); // demo luôn nhớ đăng nhập
     addLoginEntry();
-    toast.success("Welcome back, Demo User");
+    toast.success("Welcome back, Demo Client");
     const redirectTo = getRedirectTo(loc.state);
     nav(redirectTo, { replace: true });
   };
@@ -169,7 +169,7 @@ export default function LoginPage() {
               Sign in
             </CardTitle>
             <CardDescription className="text-muted-foreground">
-              Time Tracking System
+              HRIS Time Tracking System
             </CardDescription>
           </CardHeader>
 
