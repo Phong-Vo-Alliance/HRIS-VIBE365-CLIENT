@@ -192,7 +192,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline justify-between">
-              <div className="text-3xl font-bold">{kpi.online}</div>
+              <div className="text-3xl font-bold text-green-500">{kpi.online}</div>
               <button onClick={() => setActiveFilter("online")} className="nav-link text-sm">
                 View all
               </button>
@@ -202,14 +202,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-l-4 border-yellow-500">
+        <Card className="shadow-sm border-l-4 border-warning">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Employees with WARNINGS (today)</CardTitle>
-            <AlertTriangle className="h-6 w-6 text-yellow-500" />
+            <AlertTriangle className="h-6 w-6 text-warning" />
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline justify-between">
-              <div className="text-3xl font-bold">{kpi.warnings}</div>
+              <div className="text-3xl font-bold text-warning">{kpi.warnings}</div>
               {/* <Link to="/app/report?preset=warnings" className="nav-link text-sm">View all</Link> */}
               <button onClick={() => setActiveFilter("warnings")} className="nav-link text-sm">
                 View all
@@ -224,7 +224,7 @@ export default function DashboardPage() {
             <Layers className="h-6 w-6 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{kpi.projectChanges}</div>
+            <div className="text-3xl font-bold text-blue-500">{kpi.projectChanges}</div>
             <p className="text-xs text-muted-foreground">Since midnight</p>
           </CardContent>
         </Card>

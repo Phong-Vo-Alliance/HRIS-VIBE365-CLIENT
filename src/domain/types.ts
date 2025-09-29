@@ -72,3 +72,19 @@ export const STATUS_LABELS: Record<StatusKey, string> = {
   birthday_greeting: "Birthday Greeting",
   code_review: "Code Review",
 };
+
+export interface ReportRow {
+  staffId: string;
+  staffName: string;
+  department: string;
+  totalWorkTime: number;
+  totalBreakTime: number;
+  overtimeMinutes: number;
+  projects: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T | null;
+  error?: string;
+}
