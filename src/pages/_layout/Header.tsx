@@ -1,8 +1,9 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import logoUrl from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useStatusStore } from "@/stores/status.store";
+import { useAuthStore } from "@/stores/auth.store";
+import { motion } from "framer-motion";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -21,10 +22,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { useState } from "react";
-import { motion } from "framer-motion";
 import { LogOut, UserRound, KeyRound, ChevronDown } from "lucide-react";
-import { useAuthStore } from "@/stores/auth.store";
+import { useState } from "react";
 
 function getAvatarUrl(u: unknown): string | undefined {
   if (typeof u === "object" && u !== null && "avatarUrl" in u) {
@@ -37,13 +36,13 @@ function getAvatarUrl(u: unknown): string | undefined {
 export default function Header() {
   const { user, logout } = useAuthStore();
   const nav = useNavigate();
+  const loc = useLocation();
   const [openProfile, setOpenProfile] = useState(false);
   const [openPassword, setOpenPassword] = useState(false);
 
-  const addLogoutEntry = useStatusStore((s) => s.addLogoutEntry);
+  const isActive = (path: string) => loc.pathname.startsWith(path);
 
   const onLogout = () => {
-    addLogoutEntry(); // ghi lịch sử "Logout"
     logout(); // xóa auth store
     toast.success("You have been logged out");
     nav("/login", { replace: true }); // điều hướng về trang login
@@ -62,16 +61,60 @@ export default function Header() {
             className="h-10 w-auto"
           />
           <span className="font-semibold text-xl text-primary tracking-tight">
-            Time Tracking Sytem
+            Client Business Portal
           </span>
         </Link>
 
-        {user ? (
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-auto px-2 hover:bg-primary/5">
-                  <div className="flex items-center gap-2">
+        <nav className="flex items-center gap-16">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="hidden sm:flex items-center gap-6"
+          >
+            <Link
+              to="/app/dashboard"
+              className={`nav-link ${isActive("/app/dashboard") ? "text-primary" : ""}`}
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/app/report"
+              className={`nav-link ${isActive("/app/report") ? "text-primary" : ""}`}
+            >
+              Reports
+            </Link>
+          </motion.div>
+
+          {user && (
+            <div className="flex items-center gap-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-auto px-2 hover:bg-primary/5">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={getAvatarUrl(user)} alt={user.name} />
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {(user.name ?? "")
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="hidden sm:flex flex-col items-start">
+                        <span className="text-sm font-medium">{user.name}</span>
+                        <span className="text-xs text-muted-foreground">{user.email}</span>
+                      </div>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-56 data-[state=open]:animate-in data-[state=closed]:animate-out data-[side=bottom]:slide-in-from-top-2"
+                >
+                  <div className="flex items-center gap-2 p-2">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={getAvatarUrl(user)} alt={user.name} />
                       <AvatarFallback className="bg-primary/10 text-primary">
@@ -82,84 +125,56 @@ export default function Header() {
                           .toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="hidden sm:flex flex-col items-start">
+                    <div className="flex flex-col">
                       <span className="text-sm font-medium">{user.name}</span>
                       <span className="text-xs text-muted-foreground">{user.email}</span>
                     </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-56 data-[state=open]:animate-in data-[state=closed]:animate-out data-[side=bottom]:slide-in-from-top-2"
-              >
-                <div className="flex items-center gap-2 p-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={getAvatarUrl(user)} alt={user.name} />
-                    <AvatarFallback className="bg-primary/10 text-primary">
-                      {(user.name ?? "")
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{user.name}</span>
-                    <span className="text-xs text-muted-foreground">{user.email}</span>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
+                  <DropdownMenuSeparator />
 
-                <Dialog open={openProfile} onOpenChange={setOpenProfile}>
-                  <DialogTrigger asChild>
-                    <DropdownMenuItem
-                      onSelect={(e) => e.preventDefault()}
-                      className="cursor-pointer"
-                    >
-                      <UserRound className="mr-2 h-4 w-4" /> Profile
-                    </DropdownMenuItem>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Update profile</DialogTitle>
-                    </DialogHeader>
-                    <ProfileForm onClose={() => setOpenProfile(false)} />
-                  </DialogContent>
-                </Dialog>
+                  <Dialog open={openProfile} onOpenChange={setOpenProfile}>
+                    <DialogTrigger asChild>
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        className="cursor-pointer"
+                      >
+                        <UserRound className="mr-2 h-4 w-4" /> Profile
+                      </DropdownMenuItem>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Update profile</DialogTitle>
+                      </DialogHeader>
+                      <ProfileForm onClose={() => setOpenProfile(false)} />
+                    </DialogContent>
+                  </Dialog>
 
-                <Dialog open={openPassword} onOpenChange={setOpenPassword}>
-                  <DialogTrigger asChild>
-                    <DropdownMenuItem
-                      onSelect={(e) => e.preventDefault()}
-                      className="cursor-pointer"
-                    >
-                      <KeyRound className="mr-2 h-4 w-4" /> Change password
-                    </DropdownMenuItem>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Change password</DialogTitle>
-                    </DialogHeader>
-                    <ChangePasswordForm onClose={() => setOpenPassword(false)} />
-                  </DialogContent>
-                </Dialog>
+                  <Dialog open={openPassword} onOpenChange={setOpenPassword}>
+                    <DialogTrigger asChild>
+                      <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        className="cursor-pointer"
+                      >
+                        <KeyRound className="mr-2 h-4 w-4" /> Change password
+                      </DropdownMenuItem>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Change password</DialogTitle>
+                      </DialogHeader>
+                      <ChangePasswordForm onClose={() => setOpenPassword(false)} />
+                    </DialogContent>
+                  </Dialog>
 
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onLogout} className="text-red-600 focus:text-red-700">
-                  <LogOut className="mr-2 h-4 w-4" /> Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Link to="/login">
-              <Button>Sign in</Button>
-            </Link>
-          </div>
-        )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onLogout} className="text-red-600 focus:text-red-700">
+                    <LogOut className="mr-2 h-4 w-4" /> Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        </nav>
       </div>
     </header>
   );

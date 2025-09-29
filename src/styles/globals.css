@@ -154,3 +154,13 @@
     background: var(--gradient-status);
   }
 }
+
+@layer components {
+  .nav-link {
+    @apply text-foreground hover:text-primary transition-colors duration-300;
+    @apply relative after:content-[''] after:absolute after:w-full after:scale-x-0;
+    @apply after:h-0.5 after:bottom-0 after:left-0 after:bg-primary;
+    @apply after:origin-bottom-right after:transition-transform after:duration-300;
+    @apply hover:after:scale-x-100 hover:after:origin-bottom-left;
+  }
+}

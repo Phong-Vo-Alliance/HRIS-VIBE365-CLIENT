@@ -45,7 +45,7 @@ function getRedirectTo(state: unknown): string {
     const p = s.from?.pathname;
     if (typeof p === "string") return p;
   }
-  return "/";
+  return "/app";
 }
 
 // Lưu/clear auth vào storage theo "Remember me"
