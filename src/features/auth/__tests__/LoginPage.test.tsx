@@ -182,7 +182,7 @@ test("remember checkbox: default checked → toggle off → payload remember:fal
   });
 });
 
-test("demo login with no state redirects to '/'", async () => {
+test("demo login with no state redirects to '/app'", async () => {
   render(
     <MemoryRouter initialEntries={["/login"]}>
       <LoginPage />
@@ -190,7 +190,7 @@ test("demo login with no state redirects to '/'", async () => {
   );
   await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
   await waitFor(() => {
-    expect(navMock).toHaveBeenCalledWith("/", { replace: true });
+    expect(navMock).toHaveBeenCalledWith("/app", { replace: true });
   });
 });
 
