@@ -63,3 +63,4 @@ jobs:
       #   env:
       #     VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       #   run: vercel alias set "${{ steps.deploy.outputs.DEPLOY_URL }}" "hris-fe-staff.allianceitsc.com" --token "$VERCEL_TOKEN"
+
