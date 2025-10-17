@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { api } from "@/lib/api/mock";
-import type { Department, Project, Staff } from "@/domain/types";
+import type { ClientDepartment, ClientProject, Staff } from "@/domain/types";
 
 import {
   Select,
@@ -16,14 +15,17 @@ import {
 } from "@/components/ui/select";
 import { Calendar, Building2, Layers, FileDown, FileText, Filter, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { ClientStaffStatusModel, ResponseModel, SingleItemResponseModel } from "@/type/all_types";
+import { api } from "@/lib/api/client";
 
 type Row = { staff: Staff; totalMs: number; breakMs: number; overtimeMs: number };
 
 export default function ReportPage() {
   // --- Data sources ---
-  const [deps, setDeps] = useState<Department[]>([]);
-  const [prjs, setPrjs] = useState<Project[]>([]);
-  const [staff, setStaff] = useState<Staff[]>([]);
+  const [deps, setDeps] = useState<ClientDepartment[]>([]);
+  const [prjs, setPrjs] = useState<ClientProject[]>([]);
+  // const [statuses, setStatus] = useState<ClientStaffStatusModel[]>([]);
+  const [staff /*,setStaff*/] = useState<Staff[]>([]);
 
   // --- Pending filters (UI inputs) ---
   const [pendingDate, setPendingDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -31,31 +33,101 @@ export default function ReportPage() {
   const [pendingSelProjects, setPendingSelProjects] = useState<string[]>([]);
 
   // --- Applied filters (used for report) ---
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  // const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dep, setDep] = useState<string>("all");
   const [selProjects, setSelProjects] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState<"pdf" | "excel" | null>(null);
 
   useEffect(() => {
-    api.listDepartments().then(setDeps);
-    api.listProjects().then(setPrjs);
-    api.listStaff().then(setStaff);
+    //initialize data
+
+    // connection = new signalR.HubConnectionBuilder()
+    // .withUrl(`${env.API_BASE_URL}/NotificationHub`, {
+    //   accessTokenFactory: () => localStorage.getItem('auth_token') || '',
+    //   // headers: {
+    //   //   Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
+    //   // },
+
+    // })
+    // .withStatefulReconnect()
+    // .build();
+
+    //         if (connection) {
+    //         console.warn("SignalR connection:", connection)
+    //         connection
+    //           .start()
+    //           .then(() => {
+    //             connection.on("ReceiveMessage", message => {
+    //               console.warn("SignalR receive msg:", message)
+    //               //tuy vao type gi se emit event do
+    //               if (message && message.type) {
+    //                 // HEE.emit(`signalR_${message.type}`, message)
+    //               }
+    //             })
+    //           })
+    //           .catch(error =>
+    //             console.error("SignalR Error Connection SingalR:", error)
+    //           )
+    //       }
+    // // Start the connection
+    // connection
+    //   .start()
+    //   .then(() => {
+    //     console.log('SignalR connected successfully!');
+    //   })
+    //   .catch((err) => {
+    //     console.error('Error connecting to SignalR:', err);
+    //   });
+    // // Example: Listening to a server-side method
+    // connection.on('ReceiveMessage', (user, message) => {
+    //   console.log(`Message from ${user}: ${message}`);
+    // });
+
+    api
+      .post<
+        SingleItemResponseModel<ResponseModel<ClientDepartment>>
+      >("/api/v1/ClientDepartment/List", {})
+      .then((ClientDepartmentList) => {
+        const x = ClientDepartmentList.Data.Data;
+        setDeps(x);
+        api
+          .post<
+            SingleItemResponseModel<ResponseModel<ClientProject>>
+          >("/api/v1/ClientProject/List", {})
+          .then((ClientProjectList) => {
+            const x = ClientProjectList.Data.Data;
+            setPrjs(x);
+            api
+              .post<SingleItemResponseModel<ResponseModel<ClientStaffStatusModel>>>(
+                "/api/v1/ClientStaffStatus/List",
+                {},
+              )
+              .then
+              // (clientStaffStatusModel)=>{
+              // let x = clientStaffStatusModel.Data.Data;
+              // setStatus(x);
+              // }
+              ();
+          });
+      });
+
+    // setTimeout(loadKpi,10000);
   }, []);
 
   // --- Rows for report ---
   const rows: Row[] = useMemo(() => {
     const list = staff
-      .filter((s) => (dep === "all" ? true : s.departmentId === dep))
+      .filter((s) => (dep === "all" ? true : s.ClientDepartment === dep))
       .map((s) => ({
         staff: s,
         totalMs: 8 * 3600_000,
         breakMs: 30 * 60_000,
-        overtimeMs: s.id.endsWith("1") ? 15 * 60_000 : 0, // demo overtime
+        overtimeMs: s.Id.endsWith("1") ? 15 * 60_000 : 0, // demo overtime
       }));
 
     // Project filter
     if (selProjects.length > 0) {
-      return list.filter((r) => r.staff.projectIds.some((pid) => selProjects.includes(pid)));
+      return list.filter((r) => r.staff.ClientProjects.some((pid) => selProjects.includes(pid)));
     }
 
     return list;
@@ -90,49 +162,49 @@ export default function ReportPage() {
 
     setIsExporting(type);
 
-    try {
-      const reportRows = rows.map((r) => ({
-        staffId: r.staff.id,
-        staffName: `${r.staff.firstName} ${r.staff.lastName}`,
-        department: deps.find((d) => d.id === r.staff.departmentId)?.name ?? "",
-        projects: r.staff.projectIds
-          .map((pid) => prjs.find((p) => p.id === pid)?.name ?? pid)
-          .join(", "),
-        totalWorkTime: r.totalMs,
-        breakTime: r.breakMs,
-        overtime: r.overtimeMs,
-        totalBreakTime: r.breakMs, // Added to match ReportRow
-        overtimeMinutes: Math.round(r.overtimeMs / 60000), // Added to match ReportRow
-      }));
-      const response = await api.exportReport(type, reportRows);
+    // try {
+    //   const reportRows = rows.map((r) => ({
+    //     staffId: r.staff.Id,
+    //     staffName: `${r.staff.FirstName} ${r.staff.LastName}`,
+    //     department: deps.find((d) => d.Id === r.staff.ClientDepartment)?.Name ?? "",
+    //     projects: r.staff.ClientProjects
+    //       .map((pid) => prjs.find((p) => p.Id === pid)?.Name ?? pid)
+    //       .join(", "),
+    //     totalWorkTime: r.totalMs,
+    //     breakTime: r.breakMs,
+    //     overtime: r.overtimeMs,
+    //     totalBreakTime: r.breakMs, // Added to match ReportRow
+    //     overtimeMinutes: Math.round(r.overtimeMs / 60000), // Added to match ReportRow
+    //   }));
+    //   const response = await api.exportReport(type, reportRows);
 
-      if (response.success && response.data) {
-        // Create download link
-        const url = URL.createObjectURL(response.data);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `staff-report-${date}.${type === "pdf" ? "pdf" : "xlsx"}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+    //   if (response.success && response.data) {
+    //     // Create download link
+    //     const url = URL.createObjectURL(response.data);
+    //     const link = document.createElement("a");
+    //     link.href = url;
+    //     link.download = `staff-report-${date}.${type === "pdf" ? "pdf" : "xlsx"}`;
+    //     document.body.appendChild(link);
+    //     link.click();
+    //     document.body.removeChild(link);
+    //     URL.revokeObjectURL(url);
 
-        toast({
-          title: "Export Successful",
-          description: `Report exported as ${type.toUpperCase()} successfully.`,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Export Failed",
-        description:
-          "Failed to export report. Please try again." +
-          (error instanceof Error ? `(${error.message})` : ""),
-        variant: "destructive",
-      });
-    } finally {
-      setIsExporting(null);
-    }
+    //     toast({
+    //       title: "Export Successful",
+    //       description: `Report exported as ${type.toUpperCase()} successfully.`,
+    //     });
+    //   }
+    // } catch (error) {
+    //   toast({
+    //     title: "Export Failed",
+    //     description:
+    //       "Failed to export report. Please try again." +
+    //       (error instanceof Error ? `(${error.message})` : ""),
+    //     variant: "destructive",
+    //   });
+    // } finally {
+    //   setIsExporting(null);
+    // }
   };
 
   return (
@@ -170,8 +242,8 @@ export default function ReportPage() {
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   {deps.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
+                    <SelectItem key={d.Id} value={d.Id}>
+                      {d.Name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -185,23 +257,23 @@ export default function ReportPage() {
               </Label>
               <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background">
                 {prjs.map((p) => {
-                  const on = pendingSelProjects.includes(p.id);
+                  const on = pendingSelProjects.includes(p.Id);
                   return (
                     <Badge
-                      key={p.id}
-                      variant={pendingSelProjects.includes(p.id) ? "default" : "outline"}
+                      key={p.Id}
+                      variant={pendingSelProjects.includes(p.Id) ? "default" : "outline"}
                       onClick={() =>
                         setPendingSelProjects(
                           on
-                            ? pendingSelProjects.filter((id) => id !== p.id)
-                            : [...pendingSelProjects, p.id],
+                            ? pendingSelProjects.filter((id) => id !== p.Id)
+                            : [...pendingSelProjects, p.Id],
                         )
                       }
                       className={`px-3 py-1 rounded-full border transition-colors ${
                         on ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
                       }`}
                     >
-                      {p.name}
+                      {p.Name}
                     </Badge>
                   );
                 })}
@@ -213,7 +285,7 @@ export default function ReportPage() {
           <div className="flex justify-end mt-4">
             <Button
               onClick={() => {
-                setDate(pendingDate);
+                // setDate(pendingDate);
                 setDep(pendingDep);
                 setSelProjects(pendingSelProjects);
               }}
@@ -247,7 +319,6 @@ export default function ReportPage() {
                   )}
                   Export PDF
                 </Button>
-
                 <Button
                   variant="outline"
                   size="sm"
@@ -284,20 +355,20 @@ export default function ReportPage() {
                 <tbody>
                   {rows.map((r, i) => (
                     <tr
-                      key={r.staff.id}
+                      key={r.staff.Id}
                       className="border-t odd:bg-white even:bg-muted/30 hover:bg-muted/50"
                     >
                       <td className="py-2 pr-2">{i + 1}</td>
                       <td className="py-2 pr-2">
-                        {r.staff.firstName} {r.staff.lastName}
+                        {r.staff.FirstName} {r.staff.LastName}
                       </td>
                       <td className="py-2 pr-2">
-                        {deps.find((d) => d.id === r.staff.departmentId)?.name ?? ""}
+                        {deps.find((d) => d.Id === r.staff.ClientDepartment)?.Name ?? ""}
                       </td>
                       <td className="py-2 pr-2">
-                        {r.staff.projectIds
-                          .map((pid) => prjs.find((p) => p.id === pid)?.name ?? pid)
-                          .join(", ")}
+                        {r.staff.ClientProjects.map(
+                          (pid) => prjs.find((p) => p.Id === pid)?.Name ?? pid,
+                        ).join(", ")}
                       </td>
                       <td className="py-2 pr-2">{hhmm(r.totalMs)}</td>
                       <td className="py-2 pr-2">{hhmm(r.breakMs)}</td>

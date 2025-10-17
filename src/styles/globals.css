@@ -107,6 +107,9 @@
   * {
     @apply border-border;
   }
+  .max-w-lg {
+    max-width: 52rem;
+  }
   body {
     @apply bg-background text-foreground;
   }

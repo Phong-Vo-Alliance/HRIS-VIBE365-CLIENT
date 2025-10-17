@@ -1,14 +1,40 @@
-export type Department = { id: string; name: string };
-export type Project = { id: string; name: string };
+import { ClientStaffTimeTrackingModel } from "@/type/all_types";
+
+export type ClientDepartment = {
+  Id: string;
+  Name: string;
+  Code: string;
+  Description: string;
+  BusinessClientId: string;
+  StaffList: string;
+  StaffCount: number;
+  EditBtn: string;
+};
+
+export type ClientProject = {
+  Id: string;
+  Name: string;
+  Code: string;
+  Country: string;
+  Description: string;
+  BusinessClientId: string;
+  StaffCount: number;
+  StaffString: string;
+  EditBtn: string;
+};
+
 export type Staff = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  departmentId: string;
-  projectIds: string[];
-  email?: string;
-  avatarUrl?: string;
-  isActive: boolean;
+  Id: string;
+  FirstName: string;
+  LastName: string;
+  MiddleName: string;
+  ClientDepartment: string;
+  ClientProjects: string[];
+  EmailAddress?: string;
+  ProfilePicturePath?: string;
+  StaffStatusId: boolean;
+  // TimeTrackingHistory: ClientStaffTimeTrackingModel[];
+  SavedTimeTracking: ClientStaffTimeTrackingModel[];
 };
 
 export type StatusKey =
@@ -51,26 +77,6 @@ export const SHORT_BREAK_MAX: Record<
   lunch_break: 5 * 60 * 1000,
   afternoon_break: 5 * 60 * 1000,
   restroom: 5 * 60 * 1000,
-};
-
-export const STATUS_LABELS: Record<StatusKey, string> = {
-  login: "Login",
-  logout: "Logout",
-  morning_break: "Morning Break",
-  lunch_break: "Lunch Break",
-  afternoon_break: "Afternoon Break",
-  restroom: "Restroom",
-  work_in_ez_project: "Work In Ez project",
-  work_out_ez_project: "Work Out Ez project",
-  it_on_floor: "IT - On floor",
-  it_project: "IT - Project",
-  it_management: "IT - Management",
-  in_meeting: "In Meeting",
-  staff_meeting: "Staff Meeting",
-  in_training: "In Training",
-  the_juice: "The Juice",
-  birthday_greeting: "Birthday Greeting",
-  code_review: "Code Review",
 };
 
 export interface ReportRow {
