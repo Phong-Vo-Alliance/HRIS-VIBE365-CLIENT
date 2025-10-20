@@ -529,6 +529,9 @@ export default function DashboardPage() {
                                               .map((v) => String(v).padStart(2, "0"))
                                               .join(":");
                                           };
+                                          const max_time = statuses.find(
+                                            (_) => _.Id == e.StatusDefinitionId,
+                                          )?.DefaultMaxTime;
                                           return (
                                             <tr key={e.Id} className="border-t">
                                               <td className="py-2 pr-2">
@@ -537,10 +540,8 @@ export default function DashboardPage() {
                                                     (_) => _.Id == e.StatusDefinitionId,
                                                   ) ?? null,
                                                   !!(
-                                                    e.DefaultMaxTime &&
-                                                    (e.DurationSeconds ?? 0) -
-                                                      (e.DefaultMaxTime ?? 0) >
-                                                      0
+                                                    max_time &&
+                                                    (e.DurationSeconds ?? 0) - (max_time ?? 0) > 0
                                                   ),
                                                 )}
                                               </td>
@@ -557,16 +558,10 @@ export default function DashboardPage() {
                                               <td className="py-2 pr-2">
                                                 {hhmmss(e.DurationSeconds ?? 0)}
                                               </td>
+                                              <td className="py-2 pr-2">{hhmmss(max_time ?? 0)}</td>
                                               <td className="py-2 pr-2">
-                                                {hhmmss(
-                                                  statuses.find((_) => _.Id == e.StatusDefinitionId)
-                                                    ?.DefaultMaxTime ?? 0,
-                                                )}
-                                              </td>
-                                              <td className="py-2 pr-2">
-                                                {e.DefaultMaxTime &&
-                                                (e.DurationSeconds ?? 0) - (e.DefaultMaxTime ?? 0) >
-                                                  0 ? (
+                                                {max_time &&
+                                                (e.DurationSeconds ?? 0) - (max_time ?? 0) > 0 ? (
                                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/15 text-destructive">
                                                     ⚠ OVERTIME
                                                   </span>

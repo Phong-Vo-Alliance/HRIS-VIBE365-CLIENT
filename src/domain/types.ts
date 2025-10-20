@@ -35,6 +35,9 @@ export type Staff = {
   StaffStatusId: boolean;
   // TimeTrackingHistory: ClientStaffTimeTrackingModel[];
   SavedTimeTracking: ClientStaffTimeTrackingModel[];
+  SumOverTime: number | 0;
+  SumTime: number | 0;
+  SumBreakTime: number | 0;
 };
 
 export type StatusKey =

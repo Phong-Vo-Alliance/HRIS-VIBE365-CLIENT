@@ -24,13 +24,11 @@ export default function ReportPage() {
   // --- Data sources ---
   const [deps, setDeps] = useState<ClientDepartment[]>([]);
   const [prjs, setPrjs] = useState<ClientProject[]>([]);
-  // const [statuses, setStatus] = useState<ClientStaffStatusModel[]>([]);
-  const [staff /*,setStaff*/] = useState<Staff[]>([]);
+  const [statuses, setStatus] = useState<ClientStaffStatusModel[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
 
   // --- Pending filters (UI inputs) ---
-  const [pendingDate, setPendingDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [pendingDep, setPendingDep] = useState<string>("all");
-  const [pendingSelProjects, setPendingSelProjects] = useState<string[]>([]);
+  const [filterDate, setFilterDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   // --- Applied filters (used for report) ---
   // const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -98,21 +96,23 @@ export default function ReportPage() {
             const x = ClientProjectList.Data.Data;
             setPrjs(x);
             api
-              .post<SingleItemResponseModel<ResponseModel<ClientStaffStatusModel>>>(
-                "/api/v1/ClientStaffStatus/List",
-                {},
-              )
-              .then
-              // (clientStaffStatusModel)=>{
-              // let x = clientStaffStatusModel.Data.Data;
-              // setStatus(x);
-              // }
-              ();
+              .post<
+                SingleItemResponseModel<ResponseModel<ClientStaffStatusModel>>
+              >("/api/v1/ClientStaffStatus/List", {})
+              .then((statues) => {
+                setStatus(statues.Data.Data);
+                api
+                  .post<SingleItemResponseModel<ResponseModel<Staff>>>("/api/v1/ClientStaff/List", {
+                    RecordStartFrom: Date.parse(filterDate + "T00:00:00"),
+                    RecordEndAt: Date.parse(filterDate + "T23:59:59"),
+                  })
+                  .then((staffList) => {
+                    setStaff(staffList.Data.Data);
+                  });
+              });
           });
       });
-
-    // setTimeout(loadKpi,10000);
-  }, []);
+  }, [filterDate]);
 
   // --- Rows for report ---
   const rows: Row[] = useMemo(() => {
@@ -129,20 +129,8 @@ export default function ReportPage() {
     if (selProjects.length > 0) {
       return list.filter((r) => r.staff.ClientProjects.some((pid) => selProjects.includes(pid)));
     }
-
     return list;
   }, [staff, dep, selProjects]);
-
-  const sum = rows.reduce(
-    (acc, r) => {
-      acc.totalMs += r.totalMs;
-      acc.breakMs += r.breakMs;
-      acc.overtimeMs += r.overtimeMs;
-      return acc;
-    },
-    { totalMs: 0, breakMs: 0, overtimeMs: 0 },
-  );
-
   const hhmm = (ms: number) => {
     const m = Math.round(ms / 60000);
     const h = Math.floor(m / 60);
@@ -162,49 +150,49 @@ export default function ReportPage() {
 
     setIsExporting(type);
 
-    // try {
-    //   const reportRows = rows.map((r) => ({
-    //     staffId: r.staff.Id,
-    //     staffName: `${r.staff.FirstName} ${r.staff.LastName}`,
-    //     department: deps.find((d) => d.Id === r.staff.ClientDepartment)?.Name ?? "",
-    //     projects: r.staff.ClientProjects
-    //       .map((pid) => prjs.find((p) => p.Id === pid)?.Name ?? pid)
-    //       .join(", "),
-    //     totalWorkTime: r.totalMs,
-    //     breakTime: r.breakMs,
-    //     overtime: r.overtimeMs,
-    //     totalBreakTime: r.breakMs, // Added to match ReportRow
-    //     overtimeMinutes: Math.round(r.overtimeMs / 60000), // Added to match ReportRow
-    //   }));
-    //   const response = await api.exportReport(type, reportRows);
+    try {
+      const reportRows = rows.map((r) => ({
+        staffId: r.staff.Id,
+        staffName: `${r.staff.FirstName} ${r.staff.LastName}`,
+        department: deps.find((d) => d.Id === r.staff.ClientDepartment)?.Name ?? "",
+        projects: r.staff.ClientProjects.map(
+          (pid) => prjs.find((p) => p.Id === pid)?.Name ?? pid,
+        ).join(", "),
+        totalWorkTime: r.totalMs,
+        breakTime: r.breakMs,
+        overtime: r.overtimeMs,
+        totalBreakTime: r.breakMs, // Added to match ReportRow
+        overtimeMinutes: Math.round(r.overtimeMs / 60000), // Added to match ReportRow
+      }));
+      const response = await api.exportReport(type, reportRows);
 
-    //   if (response.success && response.data) {
-    //     // Create download link
-    //     const url = URL.createObjectURL(response.data);
-    //     const link = document.createElement("a");
-    //     link.href = url;
-    //     link.download = `staff-report-${date}.${type === "pdf" ? "pdf" : "xlsx"}`;
-    //     document.body.appendChild(link);
-    //     link.click();
-    //     document.body.removeChild(link);
-    //     URL.revokeObjectURL(url);
+      if (response.success && response.data) {
+        // Create download link
+        const url = URL.createObjectURL(response.data);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `staff-report-${Date.now().toString()}.${type === "pdf" ? "pdf" : "xlsx"}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
-    //     toast({
-    //       title: "Export Successful",
-    //       description: `Report exported as ${type.toUpperCase()} successfully.`,
-    //     });
-    //   }
-    // } catch (error) {
-    //   toast({
-    //     title: "Export Failed",
-    //     description:
-    //       "Failed to export report. Please try again." +
-    //       (error instanceof Error ? `(${error.message})` : ""),
-    //     variant: "destructive",
-    //   });
-    // } finally {
-    //   setIsExporting(null);
-    // }
+        toast({
+          title: "Export Successful",
+          description: `Report exported as ${type.toUpperCase()} successfully.`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description:
+          "Failed to export report. Please try again." +
+          (error instanceof Error ? `(${error.message})` : ""),
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(null);
+    }
   };
 
   return (
@@ -225,8 +213,8 @@ export default function ReportPage() {
               </Label>
               <Input
                 type="date"
-                value={pendingDate}
-                onChange={(e) => setPendingDate(e.target.value)}
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
               />
             </div>
 
@@ -235,7 +223,7 @@ export default function ReportPage() {
               <Label className="flex items-center gap-1 pb-2">
                 <Building2 className="h-4 w-4" /> Department
               </Label>
-              <Select value={pendingDep} onValueChange={setPendingDep}>
+              <Select value={dep} onValueChange={setDep}>
                 <SelectTrigger>
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
@@ -257,16 +245,14 @@ export default function ReportPage() {
               </Label>
               <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background">
                 {prjs.map((p) => {
-                  const on = pendingSelProjects.includes(p.Id);
+                  const on = selProjects.includes(p.Id);
                   return (
                     <Badge
                       key={p.Id}
-                      variant={pendingSelProjects.includes(p.Id) ? "default" : "outline"}
+                      variant={selProjects.includes(p.Id) ? "default" : "outline"}
                       onClick={() =>
-                        setPendingSelProjects(
-                          on
-                            ? pendingSelProjects.filter((id) => id !== p.Id)
-                            : [...pendingSelProjects, p.Id],
+                        setSelProjects(
+                          on ? selProjects.filter((id) => id !== p.Id) : [...selProjects, p.Id],
                         )
                       }
                       className={`px-3 py-1 rounded-full border transition-colors ${
@@ -279,19 +265,6 @@ export default function ReportPage() {
                 })}
               </div>
             </div>
-          </div>
-
-          {/* Generate Report button aligned right */}
-          <div className="flex justify-end mt-4">
-            <Button
-              onClick={() => {
-                // setDate(pendingDate);
-                setDep(pendingDep);
-                setSelProjects(pendingSelProjects);
-              }}
-            >
-              Generate Report
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -370,26 +343,110 @@ export default function ReportPage() {
                           (pid) => prjs.find((p) => p.Id === pid)?.Name ?? pid,
                         ).join(", ")}
                       </td>
-                      <td className="py-2 pr-2">{hhmm(r.totalMs)}</td>
-                      <td className="py-2 pr-2">{hhmm(r.breakMs)}</td>
                       <td className="py-2 pr-2">
-                        {r.overtimeMs > 0 ? (
+                        {hhmm(
+                          (r.staff.SumTime = r.staff.SavedTimeTracking.reduce((total, current) => {
+                            let _current = 0;
+                            if (
+                              current.TimeEnd &&
+                              current.TimeStart &&
+                              statuses.find((_) => _.Id == current.StatusDefinitionId)
+                                ?.IsInactive == false
+                            ) {
+                              _current =
+                                new Date(current.TimeEnd).getTime() -
+                                new Date(current.TimeStart).getTime();
+                            }
+                            return total + _current;
+                          }, 0)),
+                        )}
+                      </td>
+                      <td className="py-2 pr-2">
+                        {hhmm(
+                          (r.staff.SumBreakTime = r.staff.SavedTimeTracking.reduce(
+                            (total, current) => {
+                              let _current = 0;
+                              if (
+                                current.TimeEnd &&
+                                current.TimeStart &&
+                                statuses.find((_) => _.Id == current.StatusDefinitionId)
+                                  ?.IsInactive == true
+                              ) {
+                                _current =
+                                  new Date(current.TimeEnd).getTime() -
+                                  new Date(current.TimeStart).getTime();
+                              }
+                              return total + _current;
+                            },
+                            0,
+                          )),
+                        )}
+                      </td>
+                      <td className="py-2 pr-2">
+                        {(r.staff.SumOverTime = r.staff.SavedTimeTracking.reduce(
+                          (total, current) => {
+                            let _current = 0;
+                            if (
+                              current.TimeEnd &&
+                              current.TimeStart &&
+                              (statuses.find((_) => _.Id == current.StatusDefinitionId)
+                                ?.DefaultMaxTime ?? 0) > 0
+                            ) {
+                              // _current=(new Date(current.TimeEnd).getTime()-new Date(current.TimeStart).getTime());
+                              _current =
+                                (current.DurationSeconds ?? 0) -
+                                (statuses.find((_) => _.Id == current.StatusDefinitionId)
+                                  ?.DefaultMaxTime ?? 0);
+                            }
+                            _current = Math.max(0, _current) * 1000;
+                            return total + _current;
+                          },
+                          0,
+                        )) > 0 ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive">
-                            ⚠ {hhmm(r.overtimeMs)}
+                            ⚠ {hhmm(r.staff.SumOverTime)}
                           </span>
                         ) : (
                           hhmm(r.overtimeMs)
                         )}
                       </td>
+                      {/* <td className="py-2 pr-2">
+                        {r.overtimeMs > 0 ? (
+                            ⚠ {hhmm(r.overtimeMs)}
+                        ) : (
+                          hhmm(r.overtimeMs)
+                        )}
+                      </td> */}
                     </tr>
                   ))}
                   <tr className="border-t font-semibold bg-gradient-to-r from-warning/40 to-accent/30">
                     <td className="py-2 pr-2" colSpan={4}>
                       Total
                     </td>
-                    <td className="py-2 pr-2">{hhmm(sum.totalMs)}</td>
-                    <td className="py-2 pr-2">{hhmm(sum.breakMs)}</td>
-                    <td className="py-2 pr-2">{hhmm(sum.overtimeMs)}</td>
+                    <td className="py-2 pr-2">
+                      {hhmm(
+                        staff.reduce((total, current) => {
+                          const _current = current.SumTime;
+                          return total + _current;
+                        }, 0),
+                      )}
+                    </td>
+                    <td className="py-2 pr-2">
+                      {hhmm(
+                        staff.reduce((total, current) => {
+                          const _current = current.SumBreakTime;
+                          return total + _current;
+                        }, 0),
+                      )}
+                    </td>
+                    <td className="py-2 pr-2">
+                      {hhmm(
+                        staff.reduce((total, current) => {
+                          const _current = current.SumOverTime;
+                          return total + _current;
+                        }, 0),
+                      )}
+                    </td>
                   </tr>
                 </tbody>
               </table>

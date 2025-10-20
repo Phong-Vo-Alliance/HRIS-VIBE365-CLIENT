@@ -1,5 +1,8 @@
+import { ApiResponse, ReportRow } from "@/domain/types";
 import { env } from "@/lib/env";
 import { useAuthStore } from "@/stores/auth.store";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -60,5 +63,60 @@ export const api = {
       method: "POST",
       body: form,
     });
+  }, /// Export functions (stubs)
+  // async exportReport(type: 'pdf' | 'excel', data: ReportRow[]): Promise<ApiResponse<Blob>> {
+  //   await delay(1000);
+
+  //   // Create a mock blob for download
+  //   const content = type === 'pdf' ?
+  //     'Mock PDF Report Data' :
+  //     'Mock Excel Report Data';
+
+  //   const blob = new Blob([content], {
+  //     type: type === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  //   });
+
+  //   return { success: true, data: blob };
+  // },
+  async exportReport(type: "pdf" | "excel", data: ReportRow[]): Promise<ApiResponse<Blob>> {
+    if (type === "pdf") {
+      // Tạo PDF mới
+      const doc = new jsPDF();
+      doc.setFontSize(14);
+      doc.text("Daily Report", 10, 10);
+
+      let y = 20;
+      data.forEach((row, i) => {
+        const line = `${i + 1}. ${row.staffName} | ${row.department} | ${row.projects} | Total: ${row.totalWorkTime} | Break: ${row.totalBreakTime} | OT: ${row.overtimeMinutes}`;
+        doc.text(line, 10, y);
+        y += 8;
+      });
+
+      const blob = doc.output("blob");
+      return { success: true, data: blob };
+    }
+
+    if (type === "excel") {
+      // Convert data -> sheet
+      const rows = data.map((r) => ({
+        Name: r.staffName,
+        Department: r.department,
+        Projects: r.projects,
+        Total: r.totalWorkTime,
+        Break: r.totalBreakTime,
+        Overtime: r.overtimeMinutes,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Report");
+
+      const arrayBuf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([arrayBuf], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      return { success: true, data: blob };
+    }
+
+    return { success: false, data: null };
   },
 };
