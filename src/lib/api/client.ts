@@ -86,8 +86,8 @@ export const api = {
       doc.text("Daily Report", 10, 10);
 
       let y = 20;
-      data.forEach((row, i) => {
-        const line = `${i + 1}. ${row.staffName} | ${row.department} | ${row.projects} | Total: ${row.totalWorkTime} | Break: ${row.totalBreakTime} | OT: ${row.overtimeMinutes}`;
+      data.forEach((row) => {
+        const line = `${row.staffName} | ${row.department} | ${row.projects} | Total: ${row.totalWorkTime} | Break: ${row.totalBreakTime} | OT: ${row.overtimeMinutes}`;
         doc.text(line, 10, y);
         y += 8;
       });

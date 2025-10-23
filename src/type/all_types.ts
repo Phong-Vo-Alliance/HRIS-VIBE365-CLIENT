@@ -49,7 +49,7 @@ export type ClientStaffTimeTrackingModel = {
   DurationSeconds: number | null;
   DurationFormatted: string | null;
   StatusDefinitionId: string | null;
-  WorkStatusName: string | null;
+  StatusName: string | null;
   DefaultMaxTime: number | null;
   Note: string | null;
 };

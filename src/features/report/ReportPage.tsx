@@ -26,19 +26,16 @@ export default function ReportPage() {
   const [prjs, setPrjs] = useState<ClientProject[]>([]);
   const [statuses, setStatus] = useState<ClientStaffStatusModel[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
-
   // --- Pending filters (UI inputs) ---
   const [filterDate, setFilterDate] = useState(() => new Date().toISOString().slice(0, 10));
-
+  const [filterToDate, setFilterToDate] = useState(() => new Date().toISOString().slice(0, 10));
   // --- Applied filters (used for report) ---
   // const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dep, setDep] = useState<string>("all");
   const [selProjects, setSelProjects] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState<"pdf" | "excel" | null>(null);
-
   useEffect(() => {
     //initialize data
-
     // connection = new signalR.HubConnectionBuilder()
     // .withUrl(`${env.API_BASE_URL}/NotificationHub`, {
     //   accessTokenFactory: () => localStorage.getItem('auth_token') || '',
@@ -104,7 +101,8 @@ export default function ReportPage() {
                 api
                   .post<SingleItemResponseModel<ResponseModel<Staff>>>("/api/v1/ClientStaff/List", {
                     RecordStartFrom: Date.parse(filterDate + "T00:00:00"),
-                    RecordEndAt: Date.parse(filterDate + "T23:59:59"),
+                    RecordEndAt: Date.parse(filterToDate ?? filterDate + "T23:59:59"),
+                    IsClientStaff: true,
                   })
                   .then((staffList) => {
                     setStaff(staffList.Data.Data);
@@ -112,7 +110,7 @@ export default function ReportPage() {
               });
           });
       });
-  }, [filterDate]);
+  }, [filterDate, filterToDate]);
 
   // --- Rows for report ---
   const rows: Row[] = useMemo(() => {
@@ -208,14 +206,26 @@ export default function ReportPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             {/* Date */}
             <div>
-              <Label className="flex items-center gap-1 pb-2">
-                <Calendar className="h-4 w-4" /> Date
-              </Label>
-              <Input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-              />
+              <div>
+                <Label className="flex items-center gap-1 pb-2">
+                  <Calendar className="h-4 w-4" /> Date From
+                </Label>
+                <Input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="flex items-center gap-1 pb-2">
+                  <Calendar className="h-4 w-4" /> Date To
+                </Label>
+                <Input
+                  type="date"
+                  value={filterToDate}
+                  onChange={(e) => setFilterToDate(e.target.value)}
+                />
+              </div>
             </div>
 
             {/* Department */}

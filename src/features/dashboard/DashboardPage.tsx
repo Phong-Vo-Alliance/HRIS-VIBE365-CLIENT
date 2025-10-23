@@ -59,7 +59,9 @@ export default function DashboardPage() {
   };
   const loadKpi = () => {
     api
-      .post<SingleItemResponseModel<ResponseModel<Staff>>>("/api/v1/ClientStaff/List", {})
+      .post<
+        SingleItemResponseModel<ResponseModel<Staff>>
+      >("/api/v1/ClientStaff/List", { IsClientStaff: true })
       .then((staffList) => {
         staffs = staffList.Data.Data;
         setStaff(staffs);
@@ -116,14 +118,14 @@ export default function DashboardPage() {
         // load statuses
         const statusResp = await api.post<
           SingleItemResponseModel<ResponseModel<ClientStaffStatusModel>>
-        >("/api/v1/ClientStaffStatus/List", {});
+        >("/api/v1/ClientStaffStatus/List", { IsClientStaff: true });
         const statusesData = statusResp.Data.Data;
         setStatuses(statusesData);
 
         // now load staff and compute KPI using the freshly fetched prjsData/statusesData
         const staffResp = await api.post<SingleItemResponseModel<ResponseModel<Staff>>>(
           "/api/v1/ClientStaff/List",
-          {},
+          { IsClientStaff: true },
         );
         staffs = staffResp.Data.Data;
         setStaff(staffs);
@@ -245,12 +247,16 @@ export default function DashboardPage() {
       .join("")
       .toUpperCase();
 
-  const renderStatus = (status: ClientStaffStatusModel | null, overtime?: boolean) => {
+  const renderStatus = (
+    label: string,
+    status: ClientStaffStatusModel | null,
+    overtime?: boolean,
+  ) => {
     if (overtime) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-100 text-red-700 animate-pulse">
           <AlertTriangle className="h-4 w-4 text-yellow-500" />
-          {status?.WorkStatusName}
+          {label}
         </span>
       );
     } else {
@@ -263,7 +269,7 @@ export default function DashboardPage() {
             fontWeight: "bold",
           }}
         >
-          {status?.WorkStatusName}
+          {label}
         </span>
       );
     }
@@ -468,6 +474,7 @@ export default function DashboardPage() {
                         <td className="py-2 pr-2">
                           {s.SavedTimeTracking != null && s.SavedTimeTracking.length > 0
                             ? renderStatus(
+                                s.SavedTimeTracking[0].StatusName ?? "",
                                 statuses.find(
                                   (_) => _.Id == s.SavedTimeTracking[0].StatusDefinitionId,
                                 ) ?? null,
@@ -536,6 +543,7 @@ export default function DashboardPage() {
                                             <tr key={e.Id} className="border-t">
                                               <td className="py-2 pr-2">
                                                 {renderStatus(
+                                                  e.StatusName ?? "",
                                                   statuses.find(
                                                     (_) => _.Id == e.StatusDefinitionId,
                                                   ) ?? null,
