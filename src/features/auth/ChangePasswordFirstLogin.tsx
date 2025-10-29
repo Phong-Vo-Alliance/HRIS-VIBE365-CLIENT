@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { changePasswordFirstLogin } from "@/features/auth/api";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
@@ -56,8 +56,12 @@ function validatePasswordPolicy(pwd: string, email?: string): string | null {
 
 export default function ChangePasswordFirstLogin(): JSX.Element {
   const navigate = useNavigate();
+  const { recoveryKey } = useParams();
   const email = useMemo(() => localStorage.getItem("pendingEmail") ?? "", []);
-  const mustChange = useMemo(() => localStorage.getItem("mustChangePassword") === "true", []);
+  const mustChange = useMemo(
+    () => (localStorage.getItem("mustChangePassword") ?? "true") === "true",
+    [],
+  );
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -73,10 +77,10 @@ export default function ChangePasswordFirstLogin(): JSX.Element {
   const [formErr, setFormErr] = useState("");
 
   useEffect(() => {
-    if (!mustChange || !email) {
+    if ((recoveryKey ?? localStorage.getItem("reset_token")) == null || !mustChange) {
       navigate("/login", { replace: true });
     }
-  }, [mustChange, email, navigate]);
+  }, [mustChange, email, recoveryKey, navigate]);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -115,9 +119,10 @@ export default function ChangePasswordFirstLogin(): JSX.Element {
       //   import.meta.env.VITE_DEBUG_FIRST_LOGIN === "1"
       //     ? { forceMustChange: true, simulateTelemetryFail: false }
       //     : undefined;
+      const passwordKey = recoveryKey ?? localStorage.getItem("reset_token");
 
       const res = await changePasswordFirstLogin({
-        PasswordKey: localStorage.getItem("reset_token"), // Full URL,
+        PasswordKey: passwordKey, // Full URL,
         Password: newPassword,
         ConfirmPassword: confirmPassword,
       });
@@ -163,20 +168,22 @@ export default function ChangePasswordFirstLogin(): JSX.Element {
         <form onSubmit={onSubmit} noValidate>
           <CardContent className="space-y-5">
             {/* Email */}
-            <div>
-              <Label>Email</Label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 grid w-10 place-items-center text-slate-400">
-                  <Mail className="h-4 w-4" />
-                </span>
-                <Input
-                  type="email"
-                  value={email}
-                  readOnly
-                  className="pl-10 bg-gray-100 cursor-not-allowed"
-                />
+            {email ? (
+              <div>
+                <Label>Email</Label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 grid w-10 place-items-center text-slate-400">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                  <Input
+                    type="email"
+                    value={email}
+                    readOnly
+                    className="pl-10 bg-gray-100 cursor-not-allowed"
+                  />
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {/* Old password */}
             {/* <div>

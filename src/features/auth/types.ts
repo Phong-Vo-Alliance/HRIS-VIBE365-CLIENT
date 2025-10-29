@@ -24,3 +24,11 @@ export type LoginResponse = {
   isNeedChangePassword: boolean;
   mustChangePassword: boolean;
 };
+export type ForgotPasswordResponse = {
+  Email: string | null;
+  PasswordRecoveryURL: string | null;
+  ExpriedDate: string | null;
+};
+export type ForgotPasswordRequest = {
+  Email: string | null;
+};

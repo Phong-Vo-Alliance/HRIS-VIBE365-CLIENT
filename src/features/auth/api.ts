@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { api } from "@/lib/api/client";
-import type { LoginResponse } from "./types";
+import type { ForgotPasswordRequest, ForgotPasswordResponse, LoginResponse } from "./types";
+import { SingleItemResponseModel } from "@/type/all_types";
 
 // ==== Telemetry helper
 export interface Telemetry {
@@ -73,6 +74,16 @@ export async function changePasswordFirstLogin(
 ): Promise<ChangePasswordFirstLoginResponse> {
   const res = await api.post<ChangePasswordFirstLoginResponse>(
     "/api/v1/Account/ResetPassword",
+    payload,
+  );
+  return res;
+}
+
+export async function CallForgotPassword(
+  payload: ForgotPasswordRequest,
+): Promise<SingleItemResponseModel<ForgotPasswordResponse>> {
+  const res = await api.post<SingleItemResponseModel<ForgotPasswordResponse>>(
+    "/api/v1/Account/ForgotPassword",
     payload,
   );
   return res;
