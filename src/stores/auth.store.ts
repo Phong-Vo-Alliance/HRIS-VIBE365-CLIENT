@@ -1,14 +1,19 @@
+import { LoginResponse } from "@/features/auth/types";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-type AuthUser = { id: string; email: string; name?: string };
-
 type AuthState = {
-  user: AuthUser | null;
+  user: LoginResponse | null;
   token: string | null;
   hydrated: boolean;
   remember: boolean;
-  setAuth: (p: { user: AuthUser; token: string; remember?: boolean }) => void;
+  setAuth: (
+    t: string,
+    user_name: string | undefined,
+    user_id: string | undefined,
+    res: LoginResponse | null,
+    remember: boolean,
+  ) => void;
   logout: () => void;
   markHydrated: () => void; // set hydrated = true
   refresh: () => Promise<string | null>;
@@ -22,11 +27,28 @@ export const useAuthStore = create<AuthState>()(
       remember: true,
       hydrated: false,
       markHydrated: () => set({ hydrated: true }),
-      setAuth: ({ user, token, remember = true }) => set({ user, token, remember }),
+      setAuth: (token, user_name, user_id, res, remember = true) => {
+        localStorage.setItem("auth_token", token);
+        localStorage.setItem("user_name", user_name ?? "");
+        localStorage.setItem("user_id", user_id ?? "");
+        let user;
+        if (res) {
+          localStorage.setItem("auth_response", JSON.stringify(res));
+          user = JSON.parse(localStorage.getItem("auth_response") || "null");
+        } else {
+          user = null;
+        }
+        // set({ token, user_name, user_id });
+        set({ user, token, remember });
+      },
       logout: () => {
         set({ user: null, token: null });
         // nếu bạn có lưu storage, có thể cleanup luôn:
         try {
+          localStorage.removeItem("auth_token");
+          localStorage.removeItem("user_name");
+          localStorage.removeItem("user_id");
+          localStorage.removeItem("auth_response");
           localStorage.removeItem("auth");
           sessionStorage.removeItem("auth");
         } catch (err) {

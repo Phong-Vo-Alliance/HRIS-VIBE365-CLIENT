@@ -25,14 +25,13 @@ import { Toaster, toast } from "sonner";
 
 import { AuthApi } from "@/features/auth/api";
 import { useAuthStore } from "@/stores/auth.store";
-import { useStatusStore } from "@/stores/status.store";
 import logoUrl from "@/assets/logo.png";
 import loginBg from "@/assets/login-bg.jpg";
 
 const LoginSchema = z.object({
-  email: z.string().email("Invalid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  remember: z.boolean().optional().default(false),
+  username: z.string().email("Email is required"),
+  password: z.string().min(1, "Password is required"),
+  remember: z.boolean().optional().default(true),
 });
 
 type LoginInput = z.input<typeof LoginSchema>; // { email; password; remember?: boolean }
@@ -49,25 +48,6 @@ function getRedirectTo(state: unknown): string {
 }
 
 // Lưu/clear auth vào storage theo "Remember me"
-const AUTH_KEY = "auth";
-function persistAuth(
-  token: string,
-  user: { id: string; name?: string; email: string },
-  remember: boolean,
-) {
-  const payload = JSON.stringify({ token, user, remember });
-  if (remember) {
-    localStorage.setItem(AUTH_KEY, payload);
-    sessionStorage.removeItem(AUTH_KEY);
-  } else {
-    sessionStorage.setItem(AUTH_KEY, payload);
-    localStorage.removeItem(AUTH_KEY);
-  }
-}
-
-const DEMO_ENABLED = String(import.meta.env.VITE_DEMO_LOGIN ?? "true").toLowerCase() === "true";
-const DEMO_EMAIL = "demo@alliance.com";
-const DEMO_PASS = "demo123";
 
 export default function LoginPage() {
   const nav = useNavigate();
@@ -82,48 +62,50 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(LoginSchema),
-    defaultValues: { email: DEMO_EMAIL, password: DEMO_PASS, remember: true },
+    defaultValues: { username: "", password: "", remember: true },
   });
-
-  const addLoginEntry = useStatusStore((s) => s.addLoginEntry);
-
-  const demoLogin = () => {
-    const token = "DEMO_TOKEN";
-    const user = { id: "u_demo", name: "Demo Client", email: DEMO_EMAIL };
-    setAuth({ token, user });
-    persistAuth(token, user, true); // demo luôn nhớ đăng nhập
-    addLoginEntry();
-    toast.success("Welcome back, Demo Client");
-    const redirectTo = getRedirectTo(loc.state);
-    nav(redirectTo, { replace: true });
-  };
 
   const onSubmit = handleSubmit(async (data: LoginInput) => {
     try {
       // Demo short-circuit
-      if (DEMO_ENABLED && data.email === DEMO_EMAIL && data.password === DEMO_PASS) {
-        return demoLogin();
-      }
+      // if (DEMO_ENABLED && data.email === DEMO_EMAIL && data.password === DEMO_PASS) {
+      //   return demoLogin();
+      // }
       //const res = await AuthApi.login({ email: data.email, password: data.password } as any);
       const payload: LoginOutput = {
-        email: data.email,
+        username: data.username,
         password: data.password,
         remember: data.remember ?? false,
       };
       const res = await AuthApi.login(payload);
-      setAuth({ token: res.accessToken, user: res.user });
-      persistAuth(res.accessToken, res.user, !!data.remember);
-      addLoginEntry();
-      toast.success(`Welcome back, ${res.user.name}`);
+
+      // Nếu backend trả mustChangePassword
+      if (res.user_type?.includes("FirstTimeLogin") || res.isNeedChangePassword) {
+        localStorage.setItem("mustChangePassword", "true");
+        localStorage.setItem("pendingEmail", data.username); // để màn đổi pass hiển thị email
+        localStorage.setItem("reset_token", res.user_type?.replace("FirstTimeLogin_", "") ?? ""); // để màn đổi pass hiển thị email
+        toast.info("You must change your password on first login.");
+        nav("/auth/change-password", { replace: true });
+        return;
+      }
+
+      setAuth(
+        res.access_token ?? "",
+        res.user_name ?? "",
+        res.user_id ?? "",
+        res,
+        payload.remember,
+      );
+      // addLoginEntry().then(() => {
+      //   setTimeout(() => {
+      //     //for wanting to do some thing before login
+      //   }, 100);
+      // });
+      toast.success(`Welcome back, ${res.user_name}`);
       const redirectTo = getRedirectTo(loc.state);
       nav(redirectTo, { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Invalid credentials";
-      if (DEMO_ENABLED) {
-        // Fallback to demo if backend not ready
-        demoLogin();
-        return;
-      }
       toast.error(msg);
     }
   });
@@ -193,19 +175,19 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     autoComplete="email"
                     className="pl-10 focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-invalid={errors.email ? "true" : undefined}
-                    aria-describedby={errors.email ? "email-error" : undefined}
-                    {...register("email")}
+                    aria-invalid={errors.username ? "true" : undefined}
+                    aria-describedby={errors.username ? "email-error" : undefined}
+                    {...register("username")}
                   />
                 </div>
-                {errors.email && (
+                {errors.username && (
                   <p
                     role="alert"
                     id="email-error"
                     data-testid="email-error"
                     className="text-sm text-red-600"
                   >
-                    {errors.email.message}
+                    {errors.username.message}
                   </p>
                 )}
               </div>
@@ -214,7 +196,7 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Link to="#" className="text-xs text-primary hover:underline">
+                  <Link to="/forgot" className="text-xs text-primary hover:underline">
                     Forgot password?
                   </Link>
                 </div>

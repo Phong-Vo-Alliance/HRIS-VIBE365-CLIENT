@@ -5,12 +5,12 @@ import { create } from "zustand";
  * Extend/replace with real status tracking later.
  */
 type StatusStore = {
-  addLoginEntry: () => void;
+  addLoginEntry: () => Promise<void>;
   addLogoutEntry: () => void;
 };
 
 export const useStatusStore = create<StatusStore>(() => ({
-  addLoginEntry: () => {
+  addLoginEntry: async () => {
     // no-op in template
   },
 

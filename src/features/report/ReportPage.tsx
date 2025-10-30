@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { api } from "@/lib/api/mock";
-import type { Department, Project, Staff } from "@/domain/types";
+import type { ClientDepartment, ClientProject, Staff } from "@/domain/types";
 
 import {
   Select,
@@ -16,61 +15,120 @@ import {
 } from "@/components/ui/select";
 import { Calendar, Building2, Layers, FileDown, FileText, Filter, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { ClientStaffStatusModel, ResponseModel, SingleItemResponseModel } from "@/type/all_types";
+import { api } from "@/lib/api/client";
 
 type Row = { staff: Staff; totalMs: number; breakMs: number; overtimeMs: number };
 
 export default function ReportPage() {
   // --- Data sources ---
-  const [deps, setDeps] = useState<Department[]>([]);
-  const [prjs, setPrjs] = useState<Project[]>([]);
+  const [deps, setDeps] = useState<ClientDepartment[]>([]);
+  const [prjs, setPrjs] = useState<ClientProject[]>([]);
+  const [statuses, setStatus] = useState<ClientStaffStatusModel[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
-
   // --- Pending filters (UI inputs) ---
-  const [pendingDate, setPendingDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [pendingDep, setPendingDep] = useState<string>("all");
-  const [pendingSelProjects, setPendingSelProjects] = useState<string[]>([]);
-
+  const [filterDate, setFilterDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [filterToDate, setFilterToDate] = useState(() => new Date().toISOString().slice(0, 10));
   // --- Applied filters (used for report) ---
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  // const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dep, setDep] = useState<string>("all");
   const [selProjects, setSelProjects] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState<"pdf" | "excel" | null>(null);
-
   useEffect(() => {
-    api.listDepartments().then(setDeps);
-    api.listProjects().then(setPrjs);
-    api.listStaff().then(setStaff);
-  }, []);
+    //initialize data
+    // connection = new signalR.HubConnectionBuilder()
+    // .withUrl(`${env.API_BASE_URL}/NotificationHub`, {
+    //   accessTokenFactory: () => localStorage.getItem('auth_token') || '',
+    //   // headers: {
+    //   //   Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
+    //   // },
+
+    // })
+    // .withStatefulReconnect()
+    // .build();
+
+    //         if (connection) {
+    //         console.warn("SignalR connection:", connection)
+    //         connection
+    //           .start()
+    //           .then(() => {
+    //             connection.on("ReceiveMessage", message => {
+    //               console.warn("SignalR receive msg:", message)
+    //               //tuy vao type gi se emit event do
+    //               if (message && message.type) {
+    //                 // HEE.emit(`signalR_${message.type}`, message)
+    //               }
+    //             })
+    //           })
+    //           .catch(error =>
+    //             console.error("SignalR Error Connection SingalR:", error)
+    //           )
+    //       }
+    // // Start the connection
+    // connection
+    //   .start()
+    //   .then(() => {
+    //     console.log('SignalR connected successfully!');
+    //   })
+    //   .catch((err) => {
+    //     console.error('Error connecting to SignalR:', err);
+    //   });
+    // // Example: Listening to a server-side method
+    // connection.on('ReceiveMessage', (user, message) => {
+    //   console.log(`Message from ${user}: ${message}`);
+    // });
+
+    api
+      .post<
+        SingleItemResponseModel<ResponseModel<ClientDepartment>>
+      >("/api/v1/ClientDepartment/List", {})
+      .then((ClientDepartmentList) => {
+        const x = ClientDepartmentList.Data.Data;
+        setDeps(x);
+        api
+          .post<
+            SingleItemResponseModel<ResponseModel<ClientProject>>
+          >("/api/v1/ClientProject/List", {})
+          .then((ClientProjectList) => {
+            const x = ClientProjectList.Data.Data;
+            setPrjs(x);
+            api
+              .post<
+                SingleItemResponseModel<ResponseModel<ClientStaffStatusModel>>
+              >("/api/v1/ClientStaffStatus/List", {})
+              .then((statues) => {
+                setStatus(statues.Data.Data);
+                api
+                  .post<SingleItemResponseModel<ResponseModel<Staff>>>("/api/v1/ClientStaff/List", {
+                    RecordStartFrom: Date.parse(filterDate + "T00:00:00"),
+                    RecordEndAt: Date.parse(filterToDate ?? filterDate + "T23:59:59"),
+                    IsClientStaff: true,
+                  })
+                  .then((staffList) => {
+                    setStaff(staffList.Data.Data);
+                  });
+              });
+          });
+      });
+  }, [filterDate, filterToDate]);
 
   // --- Rows for report ---
   const rows: Row[] = useMemo(() => {
     const list = staff
-      .filter((s) => (dep === "all" ? true : s.departmentId === dep))
+      .filter((s) => (dep === "all" ? true : s.ClientDepartment === dep))
       .map((s) => ({
         staff: s,
         totalMs: 8 * 3600_000,
         breakMs: 30 * 60_000,
-        overtimeMs: s.id.endsWith("1") ? 15 * 60_000 : 0, // demo overtime
+        overtimeMs: s.Id.endsWith("1") ? 15 * 60_000 : 0, // demo overtime
       }));
 
     // Project filter
     if (selProjects.length > 0) {
-      return list.filter((r) => r.staff.projectIds.some((pid) => selProjects.includes(pid)));
+      return list.filter((r) => r.staff.ClientProjects.some((pid) => selProjects.includes(pid)));
     }
-
     return list;
   }, [staff, dep, selProjects]);
-
-  const sum = rows.reduce(
-    (acc, r) => {
-      acc.totalMs += r.totalMs;
-      acc.breakMs += r.breakMs;
-      acc.overtimeMs += r.overtimeMs;
-      return acc;
-    },
-    { totalMs: 0, breakMs: 0, overtimeMs: 0 },
-  );
-
   const hhmm = (ms: number) => {
     const m = Math.round(ms / 60000);
     const h = Math.floor(m / 60);
@@ -92,12 +150,12 @@ export default function ReportPage() {
 
     try {
       const reportRows = rows.map((r) => ({
-        staffId: r.staff.id,
-        staffName: `${r.staff.firstName} ${r.staff.lastName}`,
-        department: deps.find((d) => d.id === r.staff.departmentId)?.name ?? "",
-        projects: r.staff.projectIds
-          .map((pid) => prjs.find((p) => p.id === pid)?.name ?? pid)
-          .join(", "),
+        staffId: r.staff.Id,
+        staffName: `${r.staff.FirstName} ${r.staff.LastName}`,
+        department: deps.find((d) => d.Id === r.staff.ClientDepartment)?.Name ?? "",
+        projects: r.staff.ClientProjects.map(
+          (pid) => prjs.find((p) => p.Id === pid)?.Name ?? pid,
+        ).join(", "),
         totalWorkTime: r.totalMs,
         breakTime: r.breakMs,
         overtime: r.overtimeMs,
@@ -111,7 +169,7 @@ export default function ReportPage() {
         const url = URL.createObjectURL(response.data);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `staff-report-${date}.${type === "pdf" ? "pdf" : "xlsx"}`;
+        link.download = `staff-report-${Date.now().toString()}.${type === "pdf" ? "pdf" : "xlsx"}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -148,14 +206,26 @@ export default function ReportPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             {/* Date */}
             <div>
-              <Label className="flex items-center gap-1 pb-2">
-                <Calendar className="h-4 w-4" /> Date
-              </Label>
-              <Input
-                type="date"
-                value={pendingDate}
-                onChange={(e) => setPendingDate(e.target.value)}
-              />
+              <div>
+                <Label className="flex items-center gap-1 pb-2">
+                  <Calendar className="h-4 w-4" /> Date From
+                </Label>
+                <Input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="flex items-center gap-1 pb-2">
+                  <Calendar className="h-4 w-4" /> Date To
+                </Label>
+                <Input
+                  type="date"
+                  value={filterToDate}
+                  onChange={(e) => setFilterToDate(e.target.value)}
+                />
+              </div>
             </div>
 
             {/* Department */}
@@ -163,15 +233,15 @@ export default function ReportPage() {
               <Label className="flex items-center gap-1 pb-2">
                 <Building2 className="h-4 w-4" /> Department
               </Label>
-              <Select value={pendingDep} onValueChange={setPendingDep}>
+              <Select value={dep} onValueChange={setDep}>
                 <SelectTrigger>
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
                   {deps.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.name}
+                    <SelectItem key={d.Id} value={d.Id}>
+                      {d.Name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -185,41 +255,26 @@ export default function ReportPage() {
               </Label>
               <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-background">
                 {prjs.map((p) => {
-                  const on = pendingSelProjects.includes(p.id);
+                  const on = selProjects.includes(p.Id);
                   return (
                     <Badge
-                      key={p.id}
-                      variant={pendingSelProjects.includes(p.id) ? "default" : "outline"}
+                      key={p.Id}
+                      variant={selProjects.includes(p.Id) ? "default" : "outline"}
                       onClick={() =>
-                        setPendingSelProjects(
-                          on
-                            ? pendingSelProjects.filter((id) => id !== p.id)
-                            : [...pendingSelProjects, p.id],
+                        setSelProjects(
+                          on ? selProjects.filter((id) => id !== p.Id) : [...selProjects, p.Id],
                         )
                       }
                       className={`px-3 py-1 rounded-full border transition-colors ${
                         on ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
                       }`}
                     >
-                      {p.name}
+                      {p.Name}
                     </Badge>
                   );
                 })}
               </div>
             </div>
-          </div>
-
-          {/* Generate Report button aligned right */}
-          <div className="flex justify-end mt-4">
-            <Button
-              onClick={() => {
-                setDate(pendingDate);
-                setDep(pendingDep);
-                setSelProjects(pendingSelProjects);
-              }}
-            >
-              Generate Report
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -247,7 +302,6 @@ export default function ReportPage() {
                   )}
                   Export PDF
                 </Button>
-
                 <Button
                   variant="outline"
                   size="sm"
@@ -284,41 +338,125 @@ export default function ReportPage() {
                 <tbody>
                   {rows.map((r, i) => (
                     <tr
-                      key={r.staff.id}
+                      key={r.staff.Id}
                       className="border-t odd:bg-white even:bg-muted/30 hover:bg-muted/50"
                     >
                       <td className="py-2 pr-2">{i + 1}</td>
                       <td className="py-2 pr-2">
-                        {r.staff.firstName} {r.staff.lastName}
+                        {r.staff.FirstName} {r.staff.LastName}
                       </td>
                       <td className="py-2 pr-2">
-                        {deps.find((d) => d.id === r.staff.departmentId)?.name ?? ""}
+                        {deps.find((d) => d.Id === r.staff.ClientDepartment)?.Name ?? ""}
                       </td>
                       <td className="py-2 pr-2">
-                        {r.staff.projectIds
-                          .map((pid) => prjs.find((p) => p.id === pid)?.name ?? pid)
-                          .join(", ")}
+                        {r.staff.ClientProjects.map(
+                          (pid) => prjs.find((p) => p.Id === pid)?.Name ?? pid,
+                        ).join(", ")}
                       </td>
-                      <td className="py-2 pr-2">{hhmm(r.totalMs)}</td>
-                      <td className="py-2 pr-2">{hhmm(r.breakMs)}</td>
                       <td className="py-2 pr-2">
-                        {r.overtimeMs > 0 ? (
+                        {hhmm(
+                          (r.staff.SumTime = r.staff.SavedTimeTracking.reduce((total, current) => {
+                            let _current = 0;
+                            if (
+                              current.TimeEnd &&
+                              current.TimeStart &&
+                              statuses.find((_) => _.Id == current.StatusDefinitionId)
+                                ?.IsInactive == false
+                            ) {
+                              _current =
+                                new Date(current.TimeEnd).getTime() -
+                                new Date(current.TimeStart).getTime();
+                            }
+                            return total + _current;
+                          }, 0)),
+                        )}
+                      </td>
+                      <td className="py-2 pr-2">
+                        {hhmm(
+                          (r.staff.SumBreakTime = r.staff.SavedTimeTracking.reduce(
+                            (total, current) => {
+                              let _current = 0;
+                              if (
+                                current.TimeEnd &&
+                                current.TimeStart &&
+                                statuses.find((_) => _.Id == current.StatusDefinitionId)
+                                  ?.IsInactive == true
+                              ) {
+                                _current =
+                                  new Date(current.TimeEnd).getTime() -
+                                  new Date(current.TimeStart).getTime();
+                              }
+                              return total + _current;
+                            },
+                            0,
+                          )),
+                        )}
+                      </td>
+                      <td className="py-2 pr-2">
+                        {(r.staff.SumOverTime = r.staff.SavedTimeTracking.reduce(
+                          (total, current) => {
+                            let _current = 0;
+                            if (
+                              current.TimeEnd &&
+                              current.TimeStart &&
+                              (statuses.find((_) => _.Id == current.StatusDefinitionId)
+                                ?.DefaultMaxTime ?? 0) > 0
+                            ) {
+                              // _current=(new Date(current.TimeEnd).getTime()-new Date(current.TimeStart).getTime());
+                              _current =
+                                (current.DurationSeconds ?? 0) -
+                                (statuses.find((_) => _.Id == current.StatusDefinitionId)
+                                  ?.DefaultMaxTime ?? 0);
+                            }
+                            _current = Math.max(0, _current) * 1000;
+                            return total + _current;
+                          },
+                          0,
+                        )) > 0 ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-destructive/10 text-destructive">
-                            ⚠ {hhmm(r.overtimeMs)}
+                            ⚠ {hhmm(r.staff.SumOverTime)}
                           </span>
                         ) : (
                           hhmm(r.overtimeMs)
                         )}
                       </td>
+                      {/* <td className="py-2 pr-2">
+                        {r.overtimeMs > 0 ? (
+                            ⚠ {hhmm(r.overtimeMs)}
+                        ) : (
+                          hhmm(r.overtimeMs)
+                        )}
+                      </td> */}
                     </tr>
                   ))}
                   <tr className="border-t font-semibold bg-gradient-to-r from-warning/40 to-accent/30">
                     <td className="py-2 pr-2" colSpan={4}>
                       Total
                     </td>
-                    <td className="py-2 pr-2">{hhmm(sum.totalMs)}</td>
-                    <td className="py-2 pr-2">{hhmm(sum.breakMs)}</td>
-                    <td className="py-2 pr-2">{hhmm(sum.overtimeMs)}</td>
+                    <td className="py-2 pr-2">
+                      {hhmm(
+                        staff.reduce((total, current) => {
+                          const _current = current.SumTime;
+                          return total + _current;
+                        }, 0),
+                      )}
+                    </td>
+                    <td className="py-2 pr-2">
+                      {hhmm(
+                        staff.reduce((total, current) => {
+                          const _current = current.SumBreakTime;
+                          return total + _current;
+                        }, 0),
+                      )}
+                    </td>
+                    <td className="py-2 pr-2">
+                      {hhmm(
+                        staff.reduce((total, current) => {
+                          const _current = current.SumOverTime;
+                          return total + _current;
+                        }, 0),
+                      )}
+                    </td>
                   </tr>
                 </tbody>
               </table>
