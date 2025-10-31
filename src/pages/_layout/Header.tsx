@@ -175,9 +175,11 @@ export default function Header() {
                         <KeyRound className="mr-2 h-4 w-4" /> Change password
                       </DropdownMenuItem>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[860px] w-[92vw]">
-                      <DialogHeader>
-                        <DialogTitle>Change password</DialogTitle>
+                    <DialogContent>
+                      <DialogHeader className="mb-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+                        <DialogTitle className="text-xl font-semibold tracking-tight">
+                          Change Password
+                        </DialogTitle>
                       </DialogHeader>
                       <ChangePasswordForm onClose={() => setOpenPassword(false)} />
                     </DialogContent>
@@ -658,9 +660,14 @@ function ChangePasswordForm({ onClose }: { onClose: () => void }) {
       </div>
 
       <DialogFooter>
-        <Button type="submit" className="w-full">
-          Update password
-        </Button>
+        <div className="mt-2 flex flex-col sm:flex-row sm:justify-end gap-3">
+          <Button type="button" variant="ghost" onClick={onClose} className="h-10 sm:w-auto">
+            Cancel
+          </Button>
+          <Button type="submit" className="h-10 px-5 sm:w-auto w-full">
+            Update password
+          </Button>
+        </div>
       </DialogFooter>
     </form>
   );
